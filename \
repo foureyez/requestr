@@ -52,7 +52,7 @@ func (h Home) Init() tea.Cmd {
 }
 
 func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	cmds := make([]tea.Cmd, len(h.inputs))
+	inputCmds := make([]tea.Cmd, len(h.inputs))
 	var cm tea.Cmd
 
 	switch msg := msg.(type) {
@@ -63,19 +63,17 @@ func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return h, tea.Quit
 		case tea.KeyEnter:
 			h.httpCmd()
+			return h, nil
 		}
-	case http.Response:
-		h.resView.SetContent(fmt.Sprint(msg))
-	case error:
-		h.resView.SetContent(fmt.Sprint(msg))
 	}
 
 	for i := range h.inputs {
-		h.inputs[i], cmds[i] = h.inputs[i].Update(msg)
+		h.inputs[i], inputCmds[i] = h.inputs[i].Update(msg)
 	}
-	cmds = append(cmds, cm)
+	h.resView, cm = h.resView.Update(msg)
+	inputCmds = append(inputCmds, cm)
 
-	return h, tea.Batch(cmds...)
+	return h, tea.Batch(inputCmds...)
 }
 
 func (h Home) View() string {
