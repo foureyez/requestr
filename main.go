@@ -8,8 +8,8 @@ import (
 )
 
 func main() {
-	home := modals.NewRequestModal()
-	p := tea.NewProgram(home)
+	requestModel := modals.NewRequestModal()
+	p := tea.NewProgram(&requestModel, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal().Msgf("Unable to initialize app: %s", err.Error())
 	}

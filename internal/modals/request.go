@@ -2,7 +2,9 @@ package modals
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,18 +17,26 @@ import (
 const (
 	httpMethod = iota
 	url
+	headers
+	request
+	response
 )
 
 type RequestModal struct {
-	client  http.Client
-	resView viewport.Model
-	inputs  []textinput.Model
+	client        http.Client
+	headers       map[string]string
+	responseModel viewport.Model
+	inputModels   []textinput.Model
+	headersModel  table.Model
+	requestTime   time.Duration
+	currFocus     int
 }
 
 func NewRequestModal() RequestModal {
 	vp := viewport.New(30, 5)
 	inputs := make([]textinput.Model, 2)
 	inputs[httpMethod] = textinput.New()
+	inputs[httpMethod].Focus()
 	inputs[httpMethod].CharLimit = 5
 	inputs[httpMethod].Width = 5
 	inputs[httpMethod].Prompt = ""
@@ -39,21 +49,29 @@ func NewRequestModal() RequestModal {
 	inputs[url].Width = 30
 	inputs[url].Prompt = ""
 	// inputs[url].Validate = validator.Url
-	inputs[url].Focus()
+
+	headers := table.New(table.WithColumns([]table.Column{{
+		Title: "Key",
+		Width: 20,
+	}, {
+		Title: "Value",
+		Width: 50,
+	}}), table.WithHeight(1))
 
 	return RequestModal{
-		client:  http.NewClient(),
-		inputs:  inputs,
-		resView: vp,
+		client:        http.NewClient(),
+		inputModels:   inputs,
+		headersModel:  headers,
+		responseModel: vp,
 	}
 }
 
-func (h RequestModal) Init() tea.Cmd {
+func (h *RequestModal) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (h RequestModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	cmds := make([]tea.Cmd, len(h.inputs))
+func (h *RequestModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmds := make([]tea.Cmd, len(h.inputModels))
 	var cm tea.Cmd
 
 	switch msg := msg.(type) {
@@ -64,39 +82,51 @@ func (h RequestModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return h, tea.Quit
 		case tea.KeyEnter:
 			return h, h.httpCmd
+		case tea.KeyTab:
+			h.currFocus = (h.currFocus + 1) % 2
+			h.changeFocus()
 		}
 	case http.Response:
-		h.resView.SetContent(fmt.Sprint(msg))
+		h.responseModel.SetContent(fmt.Sprint(msg))
 	case error:
-		h.resView.SetContent(fmt.Sprint(msg))
+		h.responseModel.SetContent(fmt.Sprint(msg))
 	}
 
-	for i := range h.inputs {
-		h.inputs[i], cmds[i] = h.inputs[i].Update(msg)
+	for i := range h.inputModels {
+		h.inputModels[i], cmds[i] = h.inputModels[i].Update(msg)
 	}
 	cmds = append(cmds, cm)
 
 	return h, tea.Batch(cmds...)
 }
 
-func (h RequestModal) View() string {
+func (h *RequestModal) View() string {
 	return appStyle.Render(lipgloss.JoinVertical(
 		lipgloss.Center,
 		lipgloss.JoinHorizontal(
 			lipgloss.Left,
-			inputStyle.Render(h.inputs[httpMethod].View()),
-			inputStyle.Render(h.inputs[url].View()),
+			httpMethodStyle.Render(h.inputModels[httpMethod].View()),
+			inputStyle.Render(h.inputModels[url].View()),
 		),
-		inputStyle.Render(h.resView.View()),
+		headerStyle.Render(h.headersModel.View()),
+		inputStyle.Render(h.responseModel.View()),
+		h.renderRequestStat(),
 	))
 }
 
-func (h RequestModal) httpCmd() tea.Msg {
+func (h *RequestModal) renderRequestStat() string {
+	return fmt.Sprintf("Last request took: %d ms", h.requestTime/time.Millisecond)
+}
+
+func (h *RequestModal) httpCmd() tea.Msg {
 	if err := h.validate(); err != nil {
 		return err
 	}
+	startTime := time.Now()
+	defer func() {
+		h.requestTime = time.Since(startTime)
+	}()
 	r := h.createRequest()
-	h.resView.SetContent(fmt.Sprintf("%v", r))
 	res, err := h.client.Execute(r)
 	if err != nil {
 		return err
@@ -104,17 +134,35 @@ func (h RequestModal) httpCmd() tea.Msg {
 	return res
 }
 
-func (h RequestModal) createRequest() http.Request {
-	url := h.inputs[url].Value()
+func (h *RequestModal) createRequest() http.Request {
+	url := h.inputModels[url].Value()
 	return http.Request{
 		Url: url,
 	}
 }
 
-func (h RequestModal) validate() error {
-	url := h.inputs[url].Value()
+func (h *RequestModal) validate() error {
+	url := h.inputModels[url].Value()
 	if err := validator.Url(url); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (h *RequestModal) changeFocus() {
+	h.blurAll()
+	switch h.currFocus {
+	case httpMethod:
+		h.inputModels[httpMethod].Focus()
+	case url:
+		h.inputModels[url].Focus()
+	case request:
+	case response:
+	}
+}
+
+func (h *RequestModal) blurAll() {
+	for i := range h.inputModels {
+		h.inputModels[i].Blur()
+	}
 }
