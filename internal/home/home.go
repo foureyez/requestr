@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/foureyez/requestr/internal/http"
+	"github.com/foureyez/requestr/internal/validator"
 )
 
 const (
@@ -62,7 +63,7 @@ func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return h, tea.Quit
 		case tea.KeyEnter:
-			h.httpCmd()
+			return h, h.httpCmd
 		}
 	case http.Response:
 		h.resView.SetContent(fmt.Sprint(msg))
@@ -88,6 +89,9 @@ func (h Home) View() string {
 }
 
 func (h Home) httpCmd() tea.Msg {
+	if err := h.validate(); err != nil {
+		return err
+	}
 	r := h.createRequest()
 	h.resView.SetContent(fmt.Sprintf("%v", r))
 	res, err := h.client.Execute(r)
@@ -98,5 +102,16 @@ func (h Home) httpCmd() tea.Msg {
 }
 
 func (h Home) createRequest() http.Request {
-	return http.Request{}
+	url := h.inputs[url].Value()
+	return http.Request{
+		Url: url,
+	}
+}
+
+func (h Home) validate() error {
+	url := h.inputs[url].Value()
+	if err := validator.Url(url); err != nil {
+		return err
+	}
+	return nil
 }

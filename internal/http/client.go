@@ -28,7 +28,7 @@ var (
 )
 
 type Request struct {
-	Url    Url
+	Url    string
 	Method Method
 }
 
@@ -75,7 +75,7 @@ func NewClient() Client {
 }
 
 func (h HttpClient) Execute(req Request) (Response, error) {
-	res, err := h.client.Get(req.Url.String())
+	res, err := h.client.Get(req.Url)
 	if err != nil {
 		return Response{}, err
 	}
