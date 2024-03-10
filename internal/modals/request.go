@@ -1,4 +1,4 @@
-package home
+package modals
 
 import (
 	"fmt"
@@ -17,13 +17,13 @@ const (
 	url
 )
 
-type Home struct {
+type RequestModal struct {
 	client  http.Client
 	resView viewport.Model
 	inputs  []textinput.Model
 }
 
-func NewHome() Home {
+func NewRequestModal() RequestModal {
 	vp := viewport.New(30, 5)
 	inputs := make([]textinput.Model, 2)
 	inputs[httpMethod] = textinput.New()
@@ -41,18 +41,18 @@ func NewHome() Home {
 	// inputs[url].Validate = validator.Url
 	inputs[url].Focus()
 
-	return Home{
+	return RequestModal{
 		client:  http.NewClient(),
 		inputs:  inputs,
 		resView: vp,
 	}
 }
 
-func (h Home) Init() tea.Cmd {
+func (h RequestModal) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (h RequestModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, len(h.inputs))
 	var cm tea.Cmd
 
@@ -79,16 +79,19 @@ func (h Home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return h, tea.Batch(cmds...)
 }
 
-func (h Home) View() string {
+func (h RequestModal) View() string {
 	return appStyle.Render(lipgloss.JoinVertical(
 		lipgloss.Center,
-		inputStyle.Render(h.inputs[httpMethod].View()),
-		inputStyle.Render(h.inputs[url].View()),
+		lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			inputStyle.Render(h.inputs[httpMethod].View()),
+			inputStyle.Render(h.inputs[url].View()),
+		),
 		inputStyle.Render(h.resView.View()),
 	))
 }
 
-func (h Home) httpCmd() tea.Msg {
+func (h RequestModal) httpCmd() tea.Msg {
 	if err := h.validate(); err != nil {
 		return err
 	}
@@ -101,14 +104,14 @@ func (h Home) httpCmd() tea.Msg {
 	return res
 }
 
-func (h Home) createRequest() http.Request {
+func (h RequestModal) createRequest() http.Request {
 	url := h.inputs[url].Value()
 	return http.Request{
 		Url: url,
 	}
 }
 
-func (h Home) validate() error {
+func (h RequestModal) validate() error {
 	url := h.inputs[url].Value()
 	if err := validator.Url(url); err != nil {
 		return err
