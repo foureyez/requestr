@@ -24,7 +24,6 @@ const (
 
 type RequestModel struct {
 	client        http.Client
-	headers       map[string]string
 	responseModel viewport.Model
 	inputModels   []textinput.Model
 	headersModel  table.Model
@@ -37,7 +36,7 @@ func NewRequestModal() RequestModel {
 	inputs := make([]textinput.Model, 2)
 	inputs[httpMethod] = textinput.New()
 	inputs[httpMethod].Focus()
-	inputs[httpMethod].CharLimit = 5
+	inputs[httpMethod].CharLimit = 6
 	inputs[httpMethod].Width = 5
 	inputs[httpMethod].Prompt = ""
 	inputs[httpMethod].SetValue(http.Get.String())
@@ -50,18 +49,24 @@ func NewRequestModal() RequestModel {
 	inputs[url].Prompt = ""
 	// inputs[url].Validate = validator.Url
 
-	headers := table.New(table.WithColumns([]table.Column{{
+	headers := make(map[string]string)
+	headers["User-Agent"] = "requestr-alpha"
+
+	headersTable := table.New(table.WithColumns([]table.Column{{
 		Title: "Key",
 		Width: 20,
 	}, {
 		Title: "Value",
 		Width: 50,
 	}}), table.WithHeight(1))
+	headersTable.SetRows([]table.Row{{
+		"User-Agent", "requestr-alpha",
+	}})
 
 	return RequestModel{
 		client:        http.NewClient(),
 		inputModels:   inputs,
-		headersModel:  headers,
+		headersModel:  headersTable,
 		responseModel: vp,
 	}
 }
@@ -83,7 +88,7 @@ func (h *RequestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			return h, h.httpCmd
 		case tea.KeyTab:
-			h.currFocus = (h.currFocus + 1) % 2
+			h.currFocus = (h.currFocus + 1) % 3
 			h.changeFocus()
 		}
 	case http.Response:
@@ -156,6 +161,8 @@ func (h *RequestModel) changeFocus() {
 		h.inputModels[httpMethod].Focus()
 	case url:
 		h.inputModels[url].Focus()
+	case headers:
+		h.headersModel.Focus()
 	case request:
 	case response:
 	}

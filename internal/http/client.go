@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -75,7 +76,14 @@ func NewClient() Client {
 }
 
 func (h HttpClient) Execute(req Request) (Response, error) {
-	res, err := h.client.Get(req.Url)
+	var err error
+	var res *http.Response
+	switch req.Method {
+	case Get:
+		res, err = h.client.Get(req.Url)
+	case Post:
+		res, err = h.client.Post(req.Url, "application/json", bytes.NewBufferString(""))
+	}
 	if err != nil {
 		return Response{}, err
 	}
