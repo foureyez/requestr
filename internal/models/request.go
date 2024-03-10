@@ -1,4 +1,4 @@
-package modals
+package models
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ const (
 	response
 )
 
-type RequestModal struct {
+type RequestModel struct {
 	client        http.Client
 	headers       map[string]string
 	responseModel viewport.Model
@@ -32,7 +32,7 @@ type RequestModal struct {
 	currFocus     int
 }
 
-func NewRequestModal() RequestModal {
+func NewRequestModal() RequestModel {
 	vp := viewport.New(30, 5)
 	inputs := make([]textinput.Model, 2)
 	inputs[httpMethod] = textinput.New()
@@ -58,7 +58,7 @@ func NewRequestModal() RequestModal {
 		Width: 50,
 	}}), table.WithHeight(1))
 
-	return RequestModal{
+	return RequestModel{
 		client:        http.NewClient(),
 		inputModels:   inputs,
 		headersModel:  headers,
@@ -66,11 +66,11 @@ func NewRequestModal() RequestModal {
 	}
 }
 
-func (h *RequestModal) Init() tea.Cmd {
+func (h *RequestModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (h *RequestModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (h *RequestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds := make([]tea.Cmd, len(h.inputModels))
 	var cm tea.Cmd
 
@@ -100,7 +100,7 @@ func (h *RequestModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return h, tea.Batch(cmds...)
 }
 
-func (h *RequestModal) View() string {
+func (h *RequestModel) View() string {
 	return appStyle.Render(lipgloss.JoinVertical(
 		lipgloss.Center,
 		lipgloss.JoinHorizontal(
@@ -114,11 +114,11 @@ func (h *RequestModal) View() string {
 	))
 }
 
-func (h *RequestModal) renderRequestStat() string {
+func (h *RequestModel) renderRequestStat() string {
 	return fmt.Sprintf("Last request took: %d ms", h.requestTime/time.Millisecond)
 }
 
-func (h *RequestModal) httpCmd() tea.Msg {
+func (h *RequestModel) httpCmd() tea.Msg {
 	if err := h.validate(); err != nil {
 		return err
 	}
@@ -134,14 +134,14 @@ func (h *RequestModal) httpCmd() tea.Msg {
 	return res
 }
 
-func (h *RequestModal) createRequest() http.Request {
+func (h *RequestModel) createRequest() http.Request {
 	url := h.inputModels[url].Value()
 	return http.Request{
 		Url: url,
 	}
 }
 
-func (h *RequestModal) validate() error {
+func (h *RequestModel) validate() error {
 	url := h.inputModels[url].Value()
 	if err := validator.Url(url); err != nil {
 		return err
@@ -149,7 +149,7 @@ func (h *RequestModal) validate() error {
 	return nil
 }
 
-func (h *RequestModal) changeFocus() {
+func (h *RequestModel) changeFocus() {
 	h.blurAll()
 	switch h.currFocus {
 	case httpMethod:
@@ -161,7 +161,7 @@ func (h *RequestModal) changeFocus() {
 	}
 }
 
-func (h *RequestModal) blurAll() {
+func (h *RequestModel) blurAll() {
 	for i := range h.inputModels {
 		h.inputModels[i].Blur()
 	}
