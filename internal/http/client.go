@@ -45,6 +45,11 @@ func (u Url) String() string {
 
 type Response struct {
 	Payload Payload
+	Stats   Stats
+}
+
+type Stats struct {
+	TotalTime time.Duration
 }
 
 type Payload struct {
@@ -78,11 +83,14 @@ func NewClient() Client {
 func (h HttpClient) Execute(req Request) (Response, error) {
 	var err error
 	var res *http.Response
+	startTime := time.Now()
 	switch req.Method {
 	case Get:
 		res, err = h.client.Get(req.Url)
 	case Post:
 		res, err = h.client.Post(req.Url, "application/json", bytes.NewBufferString(""))
+	default:
+		res, err = h.client.Get(req.Url)
 	}
 	if err != nil {
 		return Response{}, err
@@ -91,6 +99,9 @@ func (h HttpClient) Execute(req Request) (Response, error) {
 	return Response{
 		Payload: Payload{
 			Data: string(body),
+		},
+		Stats: Stats{
+			TotalTime: time.Since(startTime),
 		},
 	}, nil
 }

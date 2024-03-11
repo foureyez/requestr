@@ -92,9 +92,11 @@ func (h *RequestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			h.changeFocus()
 		}
 	case http.Response:
-		h.responseModel.SetContent(fmt.Sprint(msg))
+		h.responseModel.SetContent(fmt.Sprint(msg.Payload))
+		h.requestTime = msg.Stats.TotalTime
 	case error:
-		h.responseModel.SetContent(fmt.Sprint(msg))
+		h.responseModel.SetContent(msg.Error())
+		h.requestTime = 0
 	}
 
 	for i := range h.inputModels {
@@ -127,10 +129,6 @@ func (h *RequestModel) httpCmd() tea.Msg {
 	if err := h.validate(); err != nil {
 		return err
 	}
-	startTime := time.Now()
-	defer func() {
-		h.requestTime = time.Since(startTime)
-	}()
 	r := h.createRequest()
 	res, err := h.client.Execute(r)
 	if err != nil {
